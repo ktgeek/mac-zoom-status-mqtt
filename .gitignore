@@ -1,0 +1,6 @@
+tags
+vendor
+.bundle
+.vscode
+.ruby-version
+.env

@@ -1,0 +1,47 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+ENV['BUNDLE_GEMFILE'] ||= File.expand_path('../Gemfile', __dir__)
+
+require 'bundler/setup'
+require 'dotenv/load'
+require 'optparse'
+require 'homie-mqtt'
+require 'socket'
+require 'sys/proctable'
+
+options = { poll_seconds: 10 }
+opts = OptionParser.new
+opts.on("-s SECONDS", "--seconds SECONDS", "Time in seconds to check the process table") do |s|
+  options[:poll_seconds] = s
+end
+
+class ZoomActivityPublisher
+  def initialize(name: nil, mqtt: ENV["MQTT_URL"], zoom_active: false)
+    hostname = name || Socket.gethostname
+    short_name = hostname.split(/\./)[0]
+    @device = MQTT::Homie::Device.new(short_name, hostname, mqtt: mqtt)
+    @device.node('zoom-activity', 'Zoom Activity', 'status') do |node|
+      node.property('status', 'status', 'boolean', zoom_active)
+    end
+    @device.publish
+  end
+
+  def status=(state)
+    @device['zoom-activity']['status'].value = state
+  end
+end
+
+def zoom_active?
+  processes = Sys::ProcTable.ps(thread_info: false)
+
+  processes.any? { |p| p.exe =~ /CptHost$/ }
+end
+
+publisher = ZoomActivityPublisher.new(zoom_active: zoom_active?)
+
+loop do
+  publisher.status = zoom_active?
+
+  sleep options[:poll_seconds]
+end

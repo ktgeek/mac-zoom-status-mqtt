@@ -1,0 +1,24 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    dotenv (2.7.6)
+    ffi (1.14.2)
+    homie-mqtt (1.2.0)
+      mqtt-ccutrer (~> 1.0)
+    mqtt-ccutrer (1.0.0)
+    sys-proctable (1.2.6)
+      ffi
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  dotenv
+  homie-mqtt
+  sys-proctable
+
+RUBY VERSION
+   ruby 2.7.1p83
+
+BUNDLED WITH
+   2.1.4
