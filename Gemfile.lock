@@ -3,7 +3,7 @@ GEM
   specs:
     dotenv (2.7.6)
     ffi (1.14.2)
-    homie-mqtt (1.2.1)
+    homie-mqtt (1.2.2)
       mqtt-ccutrer (~> 1.0)
     mqtt-ccutrer (1.0.0)
     sys-proctable (1.2.6)
@@ -14,7 +14,7 @@ PLATFORMS
 
 DEPENDENCIES
   dotenv
-  homie-mqtt
+  homie-mqtt (>= 1.2.2)
   sys-proctable
 
 RUBY VERSION
