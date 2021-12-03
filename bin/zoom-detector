@@ -38,7 +38,7 @@ def zoom_active?
   processes.any? { |p| p.exe =~ /CptHost$/ }
 end
 
-publisher = ZoomActivityPublisher.new(zoom_active: zoom_active?)
+publisher = ZoomActivityPublisher.new(name: ENV["DEVICE_NAME"], zoom_active: zoom_active?)
 
 loop do
   publisher.status = zoom_active?
