@@ -1,0 +1,14 @@
+require:
+  - rubocop-performance
+
+AllCops:
+  TargetRubyVersion: 2.7
+  NewCops: enable
+
+Metrics:
+  Enabled: false
+
+Style/Documentation:
+   Enabled: false
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
