@@ -2,10 +2,12 @@ GEM
   remote: https://rubygems.org/
   specs:
     dotenv (2.7.6)
-    ffi (1.14.2)
-    homie-mqtt (1.2.2)
-      mqtt-ccutrer (~> 1.0)
-    mqtt-ccutrer (1.0.0)
+    ffi (1.15.5)
+    homie-mqtt (1.6.1)
+      mqtt-ccutrer (~> 1.0, >= 1.0.1)
+      ruby2_keywords (~> 0.0.5)
+    mqtt-ccutrer (1.0.2)
+    ruby2_keywords (0.0.5)
     sys-proctable (1.2.6)
       ffi
 
