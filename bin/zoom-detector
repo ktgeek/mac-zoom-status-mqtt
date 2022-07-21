@@ -1,14 +1,14 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-ENV['BUNDLE_GEMFILE'] ||= File.expand_path('../Gemfile', __dir__)
+ENV["BUNDLE_GEMFILE"] ||= File.expand_path("../Gemfile", __dir__)
 
-require 'bundler/setup'
-require 'dotenv/load'
-require 'optparse'
-require 'homie-mqtt'
-require 'socket'
-require 'sys/proctable'
+require "bundler/setup"
+require "dotenv/load"
+require "optparse"
+require "homie-mqtt"
+require "socket"
+require "sys/proctable"
 
 options = { poll_seconds: 10 }
 opts = OptionParser.new
@@ -19,16 +19,16 @@ end
 class ZoomActivityPublisher
   def initialize(name: nil, mqtt: ENV["MQTT_URL"], zoom_active: false)
     hostname = name || Socket.gethostname
-    short_name = hostname.split(/\./)[0]
+    short_name = hostname.split(".")[0]
     @device = MQTT::Homie::Device.new(short_name, hostname, mqtt: mqtt, clear_topics: false)
-    @device.node('zoom-activity', 'Zoom Activity', 'status') do |node|
-      node.property('status', 'status', 'boolean', zoom_active)
+    @device.node("zoom-activity", "Zoom Activity", "status") do |node|
+      node.property("status", "status", "boolean", zoom_active)
     end
     @device.publish
   end
 
   def status=(state)
-    @device['zoom-activity']['status'].value = state
+    @device["zoom-activity"]["status"].value = state
   end
 end
 
