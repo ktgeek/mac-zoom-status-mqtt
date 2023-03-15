@@ -2,7 +2,7 @@
 
 source 'https://rubygems.org'
 
-ruby '~>2.7'
+ruby '~>3.2'
 
 gem 'dotenv'
 gem 'homie-mqtt', '>=1.2.2'
