@@ -4,7 +4,7 @@ require "zoom_activity_publisher"
 require "sys/proctable"
 
 class LegacyZoomDetection
-  ZOOM_PROCESS = /CptHost$/.freeze
+  ZOOM_PROCESS = /CptHost$/
 
   def initialize(options)
     @options = options
@@ -17,7 +17,7 @@ class LegacyZoomDetection
   end
 
   def run
-    publisher = ZoomActivityPublisher.new(name: ENV["DEVICE_NAME"], zoom_active: meeting_active?)
+    publisher = ZoomActivityPublisher.new(name: ENV.fetch("DEVICE_NAME", nil), zoom_active: meeting_active?)
 
     loop do
       publisher.status = meeting_active?

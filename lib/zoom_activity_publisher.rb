@@ -4,7 +4,7 @@ require "homie-mqtt"
 require "socket"
 
 class ZoomActivityPublisher
-  def initialize(name: nil, mqtt: ENV["MQTT_URL"], zoom_active: false)
+  def initialize(name: nil, mqtt: ENV.fetch("MQTT_URL", nil), zoom_active: false)
     hostname = name || Socket.gethostname
     short_name = name || MQTT::Homie.escape_id(hostname.split(".")[0])
     @device = MQTT::Homie::Device.new(short_name, hostname, mqtt: mqtt, clear_topics: false)
