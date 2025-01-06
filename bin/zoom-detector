@@ -9,10 +9,21 @@ require "dotenv/load"
 require "optparse"
 require "legacy_zoom_detection"
 
-options = { poll_seconds: 10 }
+options = { poll_seconds: 10, legacy: false }
 opts = OptionParser.new
-opts.on("-s SECONDS", "--seconds SECONDS", "Time in seconds to check the process table") do |s|
+opts.on("-l", "--legacy-detection", "use the legacy zoom detection") do
+  options[:legacy] = true
+end
+opts.on("-s SECONDS", "--seconds SECONDS",
+        "Time in seconds to check the process table (only for legacy detection)") do |s|
   options[:poll_seconds] = s
 end
+opts.parse!
 
-LegacyZoomDetection.new(options).run
+if options[:legacy]
+  require "legacy_zoom_detection"
+  LegacyZoomDetection.new(options).run
+else
+  require "macos_log_stream_detection"
+  MacOSLogStreamDetection.new.run
+end
