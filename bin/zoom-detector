@@ -2,13 +2,12 @@
 # frozen_string_literal: true
 
 ENV["BUNDLE_GEMFILE"] ||= File.expand_path("../Gemfile", __dir__)
+$LOAD_PATH.unshift File.expand_path(File.join(File.dirname(__FILE__), "..", "lib"))
 
 require "bundler/setup"
 require "dotenv/load"
 require "optparse"
-require "homie-mqtt"
-require "socket"
-require "sys/proctable"
+require "legacy_zoom_detection"
 
 options = { poll_seconds: 10 }
 opts = OptionParser.new
@@ -16,39 +15,4 @@ opts.on("-s SECONDS", "--seconds SECONDS", "Time in seconds to check the process
   options[:poll_seconds] = s
 end
 
-class ZoomActivityPublisher
-  def initialize(name: nil, mqtt: ENV["MQTT_URL"], zoom_active: false)
-    hostname = name || Socket.gethostname
-    short_name = name || MQTT::Homie.escape_id(hostname.split(".")[0])
-    @device = MQTT::Homie::Device.new(short_name, hostname, mqtt: mqtt, clear_topics: false)
-    @device.node("zoom-activity", "Zoom Activity", "status") do |node|
-      node.property("status", "status", :boolean, zoom_active)
-    end
-    @device.publish
-  end
-
-  def status=(state)
-    @device["zoom-activity"]["status"].value = state
-  end
-end
-
-ZOOM_PROCESS = /CptHost$/.freeze
-# Slack doesn't seem to start a help in process for just audio... well, they do, but its started shortly after slack
-# starts.. so this will detect if video capture is running, so we'll assume that's a meeting, especially since I'm a
-# camera on kind of guy.
-SLACK_PROCESS = /Slack Helper \(Plugin\)$/.freeze
-SLACK_ARG = /utility-sub-type=video_capture.mojom.VideoCaptureService/.freeze
-
-def meeting_active?
-  processes = Sys::ProcTable.ps(thread_info: false)
-
-  processes.any? { |p| p.exe =~ ZOOM_PROCESS || (p.exe =~ SLACK_PROCESS && p.cmdline =~ SLACK_ARG) }
-end
-
-publisher = ZoomActivityPublisher.new(name: ENV["DEVICE_NAME"], zoom_active: meeting_active?)
-
-loop do
-  publisher.status = meeting_active?
-
-  sleep options[:poll_seconds]
-end
+LegacyZoomDetection.new(options).run
