@@ -1,8 +1,8 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    dotenv (2.8.1)
-    ffi (1.15.5)
+    dotenv (3.1.7)
+    ffi (1.17.1)
     homie-mqtt (1.6.3)
       mqtt-ccutrer (~> 1.0, >= 1.0.3)
       ruby2_keywords (~> 0.0.5)
@@ -20,7 +20,7 @@ DEPENDENCIES
   sys-proctable
 
 RUBY VERSION
-   ruby 3.2.1p31
+   ruby 3.4.1p0
 
 BUNDLED WITH
    2.4.6
