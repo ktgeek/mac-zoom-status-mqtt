@@ -3,8 +3,12 @@
 require "zoom_activity_publisher"
 
 class MacOSLogStreamDetection
-  MACOS_COMMAND = %{/usr/bin/log stream --predicate '(eventMessage CONTAINS "<<<< AVCaptureSession >>>> -[AVCaptureSession_Tundra startRunning]" || eventMessage CONTAINS "<<<< AVCaptureSession >>>> -[AVCaptureSession_Tundra stopRunning]")'}
+  MACOS_COMMAND = %{/usr/bin/log stream --predicate '(eventMessage CONTAINS "<<<< AVCaptureSession >>>> -[AVCaptureSession_Tundra startRunning]" || eventMessage CONTAINS "<<<< AVCaptureSession >>>> -[AVCaptureSession_Tundra stopRunning]")'} # rubocop:disable Layout/LineLength
   SESSION_RE = /-\[AVCaptureSession_Tundra (start|stop)Running\]/
+
+  def initialize(logger:)
+    @logger = logger
+  end
 
   def run
     publisher = ZoomActivityPublisher.new(name: ENV.fetch("DEVICE_NAME", nil))
@@ -16,10 +20,17 @@ class MacOSLogStreamDetection
         next unless md
 
         status = case md[1]
-                 when "start" then true
-                 when "stop" then false
+                 when "start"
+                   @logger.debug { "starting" }
+                   true
+                 when "stop"
+                   @logger.debug { "stopping" }
+                   false
+                 else
+                   @logger.error { "No action! Couldn't interpret: #{line}" }
+                   nil
                  end
-        publisher.status = status
+        publisher.status = status unless status.nil?
       end
     end
   end
