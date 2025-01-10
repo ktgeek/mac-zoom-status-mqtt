@@ -27,11 +27,13 @@ OptionParser.new do |opts|
   end
 end.parse!
 
+publisher = ZoomActivityPublisher.new(name: ENV.fetch("DEVICE_NAME", nil))
+
 if options[:legacy]
   require "legacy_zoom_detection"
-  LegacyZoomDetection.new(options).run
+  LegacyZoomDetection.new(publisher:, options:).run
 else
   require "macos_log_stream_detection"
   logger = Logger.new(options[:logfile], level: options[:debug_log] ? Logger::DEBUG : Logger::ERROR)
-  MacOSLogStreamDetection.new(logger:).run
+  MacOSLogStreamDetection.new(publisher:, logger:).run
 end
