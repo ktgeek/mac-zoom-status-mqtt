@@ -3,8 +3,10 @@
 require "zoom_activity_publisher"
 
 class MacOSLogStreamDetection
-  MACOS_COMMAND = %{/usr/bin/log stream --predicate '(eventMessage CONTAINS "<<<< AVCaptureSession >>>> -[AVCaptureSession_Tundra startRunning]" || eventMessage CONTAINS "<<<< AVCaptureSession >>>> -[AVCaptureSession_Tundra stopRunning]")'} # rubocop:disable Layout/LineLength
-  SESSION_RE = /(?<pid>\d+)\s+\d+\s+(?<command>[\w\.\-\(\))]+(?<_>\s[\w\.\-\(\))]+)*): \(AVFCapture\) \[[\w\.]+:\] <<<< AVCaptureSession >>>> -\[AVCaptureSession_Tundra (?<status>start|stop)Running\]/ # rubocop:disable Layout/LineLength
+  # rubocop:disable Layout/LineLength
+  MACOS_COMMAND = %{/usr/bin/log stream --predicate '(eventMessage CONTAINS "<<<< AVCaptureSession >>>> -[AVCaptureSession_Tundra startRunning]" || eventMessage CONTAINS "<<<< AVCaptureSession >>>> -[AVCaptureSession_Tundra stopRunning]")'}
+  SESSION_RE = /(?<pid>\d+)\s+\d+\s+(?<command>[\w\.\-\(\))]+(?<_>\s[\w\.\-\(\))]+)*): \(AVFCapture\) \[[\w\.]+:\] <<<< AVCaptureSession >>>> -\[AVCaptureSession_Tundra (?<status>start|stop)Running\]/
+  # rubocop:enable Layout/LineLength
 
   attr_reader :publisher, :logger, :capturers
 
