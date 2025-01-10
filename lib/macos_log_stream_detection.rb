@@ -4,10 +4,11 @@ require "zoom_activity_publisher"
 
 class MacOSLogStreamDetection
   MACOS_COMMAND = %{/usr/bin/log stream --predicate '(eventMessage CONTAINS "<<<< AVCaptureSession >>>> -[AVCaptureSession_Tundra startRunning]" || eventMessage CONTAINS "<<<< AVCaptureSession >>>> -[AVCaptureSession_Tundra stopRunning]")'} # rubocop:disable Layout/LineLength
-  SESSION_RE = /-\[AVCaptureSession_Tundra (start|stop)Running\]/
+  SESSION_RE = /(?<pid>\d+)\s+\d+\s+(?<command>[\w\.\-]+(?<_>\s[\w\.\-]+)*): \(AVFCapture\) \[com.apple.cameracapture:\] <<<< AVCaptureSession >>>> -\[AVCaptureSession_Tundra (?<status>start|stop)Running\]/ # rubocop:disable Layout/LineLength
 
   def initialize(logger:)
     @logger = logger
+    @capturers = Set.new
   end
 
   def run
@@ -19,18 +20,22 @@ class MacOSLogStreamDetection
         md = line.match(SESSION_RE)
         next unless md
 
-        status = case md[1]
-                 when "start"
-                   @logger.debug { "starting" }
-                   true
-                 when "stop"
-                   @logger.debug { "stopping" }
-                   false
-                 else
-                   @logger.error { "No action! Couldn't interpret: #{line}" }
-                   nil
-                 end
-        publisher.status = status unless status.nil?
+        pid = md[:pid].to_i
+
+        case md[:status]
+        when "start"
+          @logger.debug { "start for #{pid} #{md[:command]}" }
+          @capturers << pid
+        when "stop"
+          @logger.debug { "stop for #{pid} #{md[:command]}" }
+          @capturers.delete(pid)
+        else
+          @logger.error { "No action! Couldn't interpret: #{line}" }
+        end
+
+        @logger.debug { "capturers: #{@capturers.to_a}" }
+
+        publisher.status = !@capturers.empty?
       end
     end
   end
