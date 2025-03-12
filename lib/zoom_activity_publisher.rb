@@ -17,4 +17,8 @@ class ZoomActivityPublisher
   def status=(state)
     @device["zoom-activity"]["status"].value = state
   end
+
+  def status
+    @device["zoom-activity"]["status"].value
+  end
 end

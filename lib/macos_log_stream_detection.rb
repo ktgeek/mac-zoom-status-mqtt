@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
+require 'forwardable'
 require "zoom_activity_publisher"
 
 class MacOSLogStreamDetection
+  # The stream command is only catching the camera, not mic. I still haven't figure out a sane/simple way to detect mic only usage.
+  # TODO: figure out mic only usage
   # rubocop:disable Layout/LineLength
   MACOS_COMMAND = %{/usr/bin/log stream --predicate '(eventMessage CONTAINS "<<<< AVCaptureSession >>>> -[AVCaptureSession_Tundra startRunning]" || eventMessage CONTAINS "<<<< AVCaptureSession >>>> -[AVCaptureSession_Tundra stopRunning]")'}
   SESSION_RE = /(?<pid>\d+)\s+\d+\s+(?<command>[\w\.\-\(\))]+(?<_>\s[\w\.\-\(\))]+)*): \(AVFCapture\) \[[\w\.]+:\] <<<< AVCaptureSession >>>> -\[AVCaptureSession_Tundra (?<status>start|stop)Running\]/
@@ -10,10 +13,31 @@ class MacOSLogStreamDetection
 
   attr_reader :publisher, :logger, :capturers
 
+  # sometimes the same app/pid can open the camera stream multiple times, so use this counter to track them.
+  # TODO: if this approach works better, move this into its own file
+  class PidCounter
+    extend Forwardable
+
+    def_delegators :@pids, :empty?, :to_s
+
+    def initialize
+      @pids = Hash.new { |h, k| h[k] = 0 }
+    end
+
+    def add(pid)
+      @pids[pid] += 1
+    end
+
+    def remove(pid)
+      @pids[pid] -= 1
+      @pids.delete(pid) if @pids[pid] <= 0
+    end
+  end
+
   def initialize(publisher:, logger:)
     @publisher = publisher
     @logger = logger
-    @capturers = Set.new
+    @capturers = PidCounter.new
   end
 
   def run
@@ -28,17 +52,18 @@ class MacOSLogStreamDetection
         case md[:status]
         when "start"
           logger.debug { "start for #{pid} #{md[:command]}" }
-          capturers << pid
+          capturers.add(pid)
         when "stop"
           logger.debug { "stop for #{pid} #{md[:command]}" }
-          capturers.delete(pid)
+          capturers.remove(pid)
         else
           logger.error { "No action! Couldn't interpret: #{line}" }
         end
 
-        logger.debug { "capturers: #{capturers.to_a}" }
+        should_be_on = !capturers.empty?
+        logger.debug { "capturers: #{capturers} should_be_on: #{should_be_on}" }
 
-        publisher.status = !capturers.empty?
+        publisher.status = should_be_on if publisher.status != should_be_on
       end
     end
   end
