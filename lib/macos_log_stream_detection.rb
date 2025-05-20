@@ -2,6 +2,7 @@
 
 require 'forwardable'
 require "zoom_activity_publisher"
+require 'concurrent/scheduled_task'
 
 class MacOSLogStreamDetection
   # The stream command is only catching the camera, not mic. I still haven't figure out a sane/simple way to detect mic only usage.
@@ -18,7 +19,7 @@ class MacOSLogStreamDetection
   class PidCounter
     extend Forwardable
 
-    def_delegators :@pids, :empty?, :to_s
+    def_delegators :@pids, :empty?, :to_s, :any?
 
     def initialize
       @pids = Hash.new { |h, k| h[k] = 0 }
@@ -41,6 +42,7 @@ class MacOSLogStreamDetection
   end
 
   def run
+    task = nil
     IO.popen(MACOS_COMMAND) do |io|
       io.readline # skip the header line from the command
       io.each_line do |line|
@@ -60,10 +62,20 @@ class MacOSLogStreamDetection
           logger.error { "No action! Couldn't interpret: #{line}" }
         end
 
-        should_be_on = !capturers.empty?
-        logger.debug { "capturers: #{capturers} should_be_on: #{should_be_on}" }
+        logger.debug { "capturers: #{capturers} should_be_on: #{capturers.any?}" }
 
-        publisher.status = should_be_on if publisher.status != should_be_on
+        # Probably an overly complicated way to debounce
+        unless task&.pending?
+          logger.debug { "Scheduling task to set status" }
+          task = Concurrent::ScheduledTask.new(1) do
+            should_be_on = capturers.any?
+            publisher.status = should_be_on if publisher.status != should_be_on
+            logger.debug { "Setting status to #{should_be_on}" }
+          end
+          task.execute
+        else
+          logger.debug { "Task already scheduled, not scheduling again" }
+        end
       end
     end
   end

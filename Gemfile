@@ -7,6 +7,7 @@ ruby "~>3.4"
 gem "dotenv"
 gem "homie-mqtt", ">=1.2.2"
 gem "sys-proctable"
+gem "concurrent-ruby"
 
 group :development do
   gem "rubocop"
