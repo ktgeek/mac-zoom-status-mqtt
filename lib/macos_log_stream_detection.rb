@@ -34,10 +34,14 @@ class MacOSLogStreamDetection
 
   CAMARA_ON_RE = /added <private> endpoint <private> camera <private>/
   CAMARA_OFF_RE = /removed endpoint <private>/
-  MIC_ON_RE = /-\[MXCoreSession beginInterruption\]: Session <ID: (?<id>\d+), PID = (?<pid>\d+),/
-  MIC_OFF_RE = /-\[MXCoreSession endInterruption:\]: Session <ID: (?<id>\d+), PID = (?<pid>\d+),/
+  MIC_RE = /-\[MXCoreSession (?<event>begin|end)Interruption:?\]: Session <ID: (?<id>\d+), PID = (?<pid>\d+), Name = \S+, (?<name>[\S+ ]+)\(\d+\),/ # rubocop:disable Layout/LineLength
+
+  # These are processes that are known to trigger mic access on my system that I want to ignore. If others are using
+  # this and need/want to add to it, maybe we'll make this configurable. But for now, hard code city, baby!
+  MIC_EXCEPTIONS = %w[arkaudiod systemsoundserve loginwindow].to_set.freeze
 
   attr_reader :publisher, :logger, :mic_capturers
+  attr_accessor :camera_count
 
   class PidCounter
     extend Forwardable
@@ -63,11 +67,31 @@ class MacOSLogStreamDetection
     @publisher = publisher
     @logger = logger
     @mic_capturers = PidCounter.new
+    @camera_count = 0
+  end
+
+  def handle_camera(event_message)
+    case event_message
+    when CAMARA_ON_RE
+      logger.debug { "camera ON detected" }
+      self.camera_count += 1
+    when CAMARA_OFF_RE
+      logger.debug { "camera OFF detected" }
+      self.camera_count -= 1 if camera_count.positive?
+    end
+  end
+
+  def handle_mic(event_message)
+    md = event_message.match(MIC_RE)
+    return unless md
+
+    ignore = MIC_EXCEPTIONS.include?(md[:name])
+    logger.debug { "mic #{md[:event]} detected for #{md[:name]}" + (ignore ? " (ignored)" : "") }
+    mic_capturers.public_send((md[:event] == "begin" ? :add : :remove), md[:id], md[:pid]) unless ignore
   end
 
   def run
     task = nil
-    camera_count = 0
 
     logger.debug { "Starting log stream with command: #{MacOSLogStreamDetection.macos_command}" }
     IO.popen(MacOSLogStreamDetection.macos_command) do |io|
@@ -76,27 +100,11 @@ class MacOSLogStreamDetection
         json = JSON.parse(line)
 
         event_message = json["eventMessage"]
-
         case json["subsystem"]
         when "com.apple.cmio"
-          case event_message
-          when CAMARA_ON_RE
-            logger.debug { "camera ON detected" }
-            camera_count += 1
-          when CAMARA_OFF_RE
-            logger.debug { "camera OFF detected" }
-            camera_count -= 1 if camera_count > 0
-          end
+          handle_camera(event_message)
         when "com.apple.coremedia"
-          case event_message
-            # matchdata is in $~
-          when MIC_ON_RE
-            logger.debug { "mic ON detected" }
-            mic_capturers.add($LAST_MATCH_INFO[:id], $LAST_MATCH_INFO[:pid])
-          when MIC_OFF_RE
-            logger.debug { "mic OFF detected" }
-            mic_capturers.remove($LAST_MATCH_INFO[:id], $LAST_MATCH_INFO[:pid])
-          end
+          handle_mic(event_message)
         end
 
         logger.debug { "camera count: #{camera_count}, capturers: #{mic_capturers}" }
@@ -108,8 +116,10 @@ class MacOSLogStreamDetection
           logger.debug { "Scheduling task to set status" }
           task = Concurrent::ScheduledTask.new(1) do
             should_be_on = mic_capturers.any? || camera_count.positive?
-            publisher.status = should_be_on if publisher.status != should_be_on
-            logger.debug { "Setting status to #{should_be_on}" }
+            if publisher.status != should_be_on
+              publisher.status = should_be_on
+              logger.debug { "Setting status to #{should_be_on}" }
+            end
           end
           task.execute
         end
