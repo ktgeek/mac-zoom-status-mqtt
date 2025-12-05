@@ -38,7 +38,7 @@ class MacOSLogStreamDetection
 
   # These are processes that are known to trigger mic access on my system that I want to ignore. If others are using
   # this and need/want to add to it, maybe we'll make this configurable. But for now, hard code city, baby!
-  MIC_EXCEPTIONS = %w[arkaudiod systemsoundserve loginwindow].to_set.freeze
+  MIC_EXCEPTIONS = ["arkaudiod", "systemsoundserve", "loginwindow", "corespeechd", "iPhone Mirroring"].to_set.freeze
 
   attr_reader :publisher, :logger, :mic_capturers
   attr_accessor :camera_count
@@ -86,7 +86,7 @@ class MacOSLogStreamDetection
     return unless md
 
     ignore = MIC_EXCEPTIONS.include?(md[:name])
-    logger.debug { "mic #{md[:event]} detected for #{md[:name]}" + (ignore ? " (ignored)" : "") }
+    logger.debug { "mic #{md[:event]} detected for #{md[:name]}#{' (ignored)' if ignore}" }
     mic_capturers.public_send((md[:event] == "begin" ? :add : :remove), md[:id], md[:pid]) unless ignore
   end
 
