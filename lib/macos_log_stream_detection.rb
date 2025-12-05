@@ -12,24 +12,22 @@ class MacOSLogStreamDetection
   # Yes, this is gross AF, but I couldn't think of a better way to get the command to be understandable and easily
   # editble
   def self.macos_command
-    @macos_command ||= begin
-      command = <<~FOO
-        /usr/bin/log stream
-          --predicate '(subsystem=="com.apple.cmio"
-                        AND
-                        (eventMessage CONTAINS "added <private> endpoint <private> camera <private>"
-                        OR
-                        eventMessage CONTAINS "removed endpoint <private>"))
+    command = <<~FOO
+      /usr/bin/log stream
+        --predicate '(subsystem=="com.apple.cmio"
+                      AND
+                      (eventMessage CONTAINS "added <private> endpoint <private> camera <private>"
                       OR
-                      (subsystem=="com.apple.coremedia"
-                        AND
-                        (eventMessage CONTAINS "-[MXCoreSession beginInterruption]:"
-                        OR
-                        eventMessage CONTAINS "-[MXCoreSession endInterruption:]:"))'
-          --style ndjson
-      FOO
-      command.tr("\n", " ").squeeze(" ")
-    end
+                      eventMessage CONTAINS "removed endpoint <private>"))
+                    OR
+                    (subsystem=="com.apple.coremedia"
+                      AND
+                      (eventMessage CONTAINS "-[MXCoreSession beginInterruption]:"
+                      OR
+                      eventMessage CONTAINS "-[MXCoreSession endInterruption:]:"))'
+        --style ndjson
+    FOO
+    command.tr("\n", " ").squeeze(" ")
   end
 
   CAMARA_ON_RE = /added <private> endpoint <private> camera <private>/
