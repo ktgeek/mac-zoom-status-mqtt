@@ -11,24 +11,21 @@ require "json"
 class MacOSLogStreamDetection
   # Yes, this is gross AF, but I couldn't think of a better way to get the command to be understandable and easily
   # editble
-  def self.macos_command
-    command = <<~FOO
-      /usr/bin/log stream
-        --predicate '(subsystem=="com.apple.cmio"
-                      AND
-                      (eventMessage CONTAINS "added <private> endpoint <private> camera <private>"
-                      OR
-                      eventMessage CONTAINS "removed endpoint <private>"))
+  COMMAND = <<~FOO.tr("\n", " ").squeeze(" ").freeze
+    /usr/bin/log stream
+      --predicate '(subsystem=="com.apple.cmio"
+                    AND
+                    (eventMessage CONTAINS "added <private> endpoint <private> camera <private>"
                     OR
-                    (subsystem=="com.apple.coremedia"
-                      AND
-                      (eventMessage CONTAINS "-[MXCoreSession beginInterruption]:"
-                      OR
-                      eventMessage CONTAINS "-[MXCoreSession endInterruption:]:"))'
-        --style ndjson
-    FOO
-    command.tr("\n", " ").squeeze(" ")
-  end
+                    eventMessage CONTAINS "removed endpoint <private>"))
+                  OR
+                  (subsystem=="com.apple.coremedia"
+                    AND
+                    (eventMessage CONTAINS "-[MXCoreSession beginInterruption]:"
+                    OR
+                    eventMessage CONTAINS "-[MXCoreSession endInterruption:]:"))'
+      --style ndjson
+  FOO
 
   CAMARA_ON_RE = /added <private> endpoint <private> camera <private>/
   CAMARA_OFF_RE = /removed endpoint <private>/
@@ -91,8 +88,8 @@ class MacOSLogStreamDetection
   def run
     task = nil
 
-    logger.debug { "Starting log stream with command: #{MacOSLogStreamDetection.macos_command}" }
-    IO.popen(MacOSLogStreamDetection.macos_command) do |io|
+    logger.debug { "Starting log stream with command: #{COMMAND}" }
+    IO.popen(COMMAND) do |io|
       io.readline # skip the header line from the command
       io.each_line do |line|
         json = JSON.parse(line)
