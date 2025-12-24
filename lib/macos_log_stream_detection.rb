@@ -58,14 +58,20 @@ class MacOSLogStreamDetection
     end
   end
 
-  def initialize(publisher:, logger:)
+  def initialize(publisher:, logger:, mic_check: false)
     @publisher = publisher
     @logger = logger
+    @mic_check = mic_check
     @mic_capturers = PidCounter.new
     @camera_count = 0
   end
 
+  def mic_check?
+    @ignore_mic
+  end
+
   def handle_camera(event_message)
+    result = true
     case event_message
     when CAMARA_ON_RE
       logger.debug { "camera ON detected" }
@@ -73,16 +79,22 @@ class MacOSLogStreamDetection
     when CAMARA_OFF_RE
       logger.debug { "camera OFF detected" }
       self.camera_count -= 1 if camera_count.positive?
+    else
+      result = false
     end
+    result
   end
 
   def handle_mic(event_message)
+    return false unless mic_check?
+
     md = event_message.match(MIC_RE)
-    return unless md
+    return false unless md
 
     ignore = MIC_EXCEPTIONS.include?(md[:name])
     logger.debug { "mic #{md[:event]} detected for #{md[:name]}#{' (ignored)' if ignore}" }
     mic_capturers.public_send((md[:event] == "begin" ? :add : :remove), md[:id], md[:pid]) unless ignore
+    true
   end
 
   def run
@@ -95,14 +107,17 @@ class MacOSLogStreamDetection
         json = JSON.parse(line)
 
         event_message = json["eventMessage"]
-        case json["subsystem"]
-        when "com.apple.cmio"
-          handle_camera(event_message)
-        when "com.apple.coremedia"
-          handle_mic(event_message)
-        end
+        handled = case json["subsystem"]
+                  when "com.apple.cmio"
+                    handle_camera(event_message)
+                  when "com.apple.coremedia"
+                    handle_mic(event_message)
+                  else
+                    false
+                  end
 
-        logger.debug { "camera count: #{camera_count}, capturers: #{mic_capturers}" }
+        logger.debug { "handled: #{handled}, camera count: #{camera_count}, capturers: #{mic_capturers}" }
+        next unless handled
 
         # Probably an overly complicated way to debounce
         if task&.pending?

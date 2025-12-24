@@ -10,13 +10,16 @@ require "logger"
 require "dotenv/load"
 require "legacy_zoom_detection"
 
-options = { poll_seconds: 10, legacy: false, debug_log: false, logfile: $stdout }
+options = { poll_seconds: 10, legacy: false, debug_log: false, logfile: $stdout, mic_check: false }
 OptionParser.new do |opts|
   opts.on("-d", "--debug", "Enable debug logging") do
     options[:debug_log] = true
   end
   opts.on("-l", "--legacy-detection", "use the legacy zoom detection") do
     options[:legacy] = true
+  end
+  opts.on("-m", "--mic-check", "Enable mic checking") do
+    options[:mic_check] = true
   end
   opts.on("--log LOGFILE", "Log to this file") do |logfile|
     options[:logfile] = logfile
@@ -35,5 +38,5 @@ if options[:legacy]
 else
   require "macos_log_stream_detection"
   logger = Logger.new(options[:logfile], level: options[:debug_log] ? Logger::DEBUG : Logger::ERROR)
-  MacOSLogStreamDetection.new(publisher:, logger:).run
+  MacOSLogStreamDetection.new(publisher:, logger:, mic_check: options[:mic_check]).run
 end
