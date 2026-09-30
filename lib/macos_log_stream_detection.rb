@@ -67,7 +67,7 @@ class MacOSLogStreamDetection
   end
 
   def mic_check?
-    @ignore_mic
+    @mic_check
   end
 
   def handle_camera(event_message)
